@@ -49,9 +49,7 @@ class _MainAppState extends State<MainApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cerita Rakyat PBM 7',
-      theme: ThemeData(
-        primarySwatch: Colors.blueGrey,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blueGrey, fontFamily: 'Novecento'),
       home: const MyHomePage(title: 'Cerita Rakyat PBM 7'),
     );
   }
