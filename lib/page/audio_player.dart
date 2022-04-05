@@ -8,7 +8,6 @@ class AudioPlayerPage extends StatefulWidget {
   String audioPath = "";
 
   final _audioPlayer = AssetsAudioPlayer();
-  bool _audioIsPlaying = false;
   double _audioMaxDuration = double.infinity;
   late Duration _audioCurrentDuration;
 
@@ -81,7 +80,10 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
             children: [
               Text(
                   "${widget._audioCurrentDuration.inSeconds ~/ 60 < 10 ? '0' + (widget._audioCurrentDuration.inSeconds ~/ 60).toString() : widget._audioCurrentDuration.inSeconds ~/ 60}:${widget._audioCurrentDuration.inSeconds % 60 < 10 ? '0' + (widget._audioCurrentDuration.inSeconds % 60).toString() : widget._audioCurrentDuration.inSeconds % 60}"),
-              Text(widget._test.getString()[widget._idxText]),
+              Text(
+                widget._test.getString()[widget._idxText],
+                style: TextStyle(fontFamily: 'Novecento'),
+              ),
               Slider(
                 value: widget._audioCurrentDuration.inSeconds.toDouble(),
                 max: widget._audioMaxDuration,
