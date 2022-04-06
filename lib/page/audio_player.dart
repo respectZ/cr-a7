@@ -2,6 +2,21 @@ import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:cerita_rakyat/model/timed_string.dart';
 import 'package:flutter/material.dart';
 
+String getDuration(Duration duration) {
+  String twoDigits(int i) => i.toString().padLeft(2, '0');
+  return "${twoDigits(duration.inSeconds ~/ 60)}:${twoDigits(duration.inSeconds % 60)}";
+}
+
+String getCurrentLyric(TimedString lyrics, Duration position) {
+  var timing = lyrics.getTiming();
+  for (int i = timing.length - 1; i > -1; i--) {
+    if (timing[i].inMilliseconds <= position.inMilliseconds) {
+      return lyrics.getString()[i];
+    }
+  }
+  return "";
+}
+
 class AudioPlayerPage extends StatefulWidget {
   AudioPlayerPage({Key? key, required this.audioPath, this.lyrics})
       : super(key: key);
@@ -43,15 +58,8 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
           widget._audioPlayer.builderCurrentPosition(
               builder: ((context, position) {
             if (widget.lyrics != null) {
-              var timing = widget.lyrics!.getTiming();
-              for (int i = timing.length - 1; i > -1; i--) {
-                if (timing[i].inMilliseconds <= position.inMilliseconds) {
-                  widget._idxText = i;
-                  break;
-                }
-              }
               return Text(
-                widget.lyrics!.getString()[widget._idxText],
+                getCurrentLyric(widget.lyrics!, position),
                 style: TextStyle(fontSize: 28),
               );
             } else {
@@ -85,28 +93,79 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
           ],
         ),
         // Timer & Slider
-        widget._audioPlayer.builderCurrentPosition(
-            builder: (context, position) {
-          widget._audioCurrentDuration = position;
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                  "${widget._audioCurrentDuration.inSeconds ~/ 60 < 10 ? '0' + (widget._audioCurrentDuration.inSeconds ~/ 60).toString() : widget._audioCurrentDuration.inSeconds ~/ 60}:${widget._audioCurrentDuration.inSeconds % 60 < 10 ? '0' + (widget._audioCurrentDuration.inSeconds % 60).toString() : widget._audioCurrentDuration.inSeconds % 60}"),
-              Slider(
-                value: widget._audioCurrentDuration.inSeconds.toDouble(),
-                max: widget._audioMaxDuration,
-                onChanged: (value) {
-                  setState(() {
-                    widget._audioCurrentDuration =
-                        Duration(seconds: value.toInt());
-                    widget._audioPlayer.seek(widget._audioCurrentDuration);
-                  });
-                },
-              ),
-            ],
-          );
-        })
+        widget._audioPlayer.builderIsPlaying(builder: (context, isPlaying) {
+          if (isPlaying) {
+            return widget._audioPlayer.builderCurrentPosition(
+                builder: (context, position) {
+              widget._audioCurrentDuration = position;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(getDuration(widget._audioCurrentDuration)),
+                  Expanded(
+                    child: Slider(
+                      value: widget._audioCurrentDuration.inSeconds.toDouble(),
+                      max: widget._audioMaxDuration,
+                      onChanged: (value) {
+                        setState(() {
+                          widget._audioCurrentDuration =
+                              Duration(seconds: value.toInt());
+                          widget._audioPlayer
+                              .seek(widget._audioCurrentDuration);
+                        });
+                      },
+                    ),
+                  ),
+                  Text(getDuration(
+                      Duration(seconds: widget._audioMaxDuration.toInt()))),
+                ],
+              );
+            });
+          } else {
+            return StreamBuilder(
+                stream: widget._audioPlayer.current,
+                builder: (context, snapshot) {
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.waiting:
+                      return Text("Loading...");
+                    default:
+                      if (snapshot.hasData) {
+                        var _maxDurationDouble = (snapshot.data as Playing)
+                            .audio
+                            .duration
+                            .inSeconds
+                            .toDouble();
+                        var _maxDuration =
+                            (snapshot.data as Playing).audio.duration;
+
+                        return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(getDuration(widget._audioCurrentDuration)),
+                              Expanded(
+                                child: Slider(
+                                  value: widget._audioCurrentDuration.inSeconds
+                                      .toDouble(),
+                                  max: _maxDurationDouble,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      widget._audioCurrentDuration =
+                                          Duration(seconds: value.toInt());
+                                      widget._audioPlayer
+                                          .seek(widget._audioCurrentDuration);
+                                    });
+                                  },
+                                ),
+                              ),
+                              Text(getDuration(_maxDuration)),
+                            ]);
+                      } else {
+                        return Text("err");
+                      }
+                  }
+                });
+          }
+        }),
       ],
     );
   }
