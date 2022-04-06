@@ -28,8 +28,6 @@ class AudioPlayerPage extends StatefulWidget {
   double _audioMaxDuration = double.infinity;
   late Duration _audioCurrentDuration;
 
-  int _idxText = 0;
-
   @override
   State<AudioPlayerPage> createState() => _AudioPlayerState();
 }
@@ -70,116 +68,185 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
             }
           }))
         ]),
-        // Audio Control
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.skip_previous_rounded),
-            ElevatedButton(onPressed: () {
-              setState(() {
-                widget._audioPlayer.isPlaying.value
-                    ? widget._audioPlayer.pause()
-                    : widget._audioPlayer.play();
-                widget._audioMaxDuration = widget
-                    ._audioPlayer.current.value!.audio.duration.inSeconds
-                    .toDouble();
-              });
-            }, child: widget._audioPlayer.builderIsPlaying(
-                builder: (context, isPlaying) {
-              if (isPlaying) {
-                return Icon(Icons.pause_rounded);
-              } else {
-                return Icon(Icons.play_arrow_rounded);
-              }
-            })),
-            Icon(Icons.skip_next_rounded),
-          ],
-        ),
-        // Timer & Slider
-        widget._audioPlayer.builderIsPlaying(builder: (context, isPlaying) {
-          // kalo is playing pake streambuilder current pos
-          if (isPlaying) {
-            return widget._audioPlayer.builderCurrentPosition(
-                builder: (context, position) {
-              widget._audioCurrentDuration = position;
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        // bottom player
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 5,
+                blurRadius: 7,
+                offset: Offset(0, 3), // changes position of shadow
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Slider bar
+              widget._audioPlayer.builderIsPlaying(
+                  builder: (context, isPlaying) {
+                // kalo is playing pake streambuilder current pos
+                if (isPlaying) {
+                  return widget._audioPlayer.builderCurrentPosition(
+                      builder: (context, position) {
+                    widget._audioCurrentDuration = position;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Slider(
+                            value: widget._audioCurrentDuration.inSeconds
+                                .toDouble(),
+                            max: widget._audioMaxDuration,
+                            onChanged: (value) {
+                              setState(() {
+                                widget._audioCurrentDuration =
+                                    Duration(seconds: value.toInt());
+                                widget._audioPlayer
+                                    .seek(widget._audioCurrentDuration);
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  });
+                  // kalo engga pake streambuilder, ngecek audionya udh load -> widget
+                } else {
+                  return StreamBuilder(
+                      stream: widget._audioPlayer.current,
+                      builder: (context, snapshot) {
+                        switch (snapshot.connectionState) {
+                          case ConnectionState.waiting:
+                            return Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Slider(
+                                      value: widget
+                                          ._audioCurrentDuration.inSeconds
+                                          .toDouble(),
+                                      max: widget._audioMaxDuration,
+                                      onChanged: (value) {},
+                                    ),
+                                  ),
+                                ]);
+                          default:
+                            if (snapshot.hasData) {
+                              var _maxDurationDouble =
+                                  (snapshot.data as Playing)
+                                      .audio
+                                      .duration
+                                      .inSeconds
+                                      .toDouble();
+                              var _maxDuration =
+                                  (snapshot.data as Playing).audio.duration;
+                              widget._audioMaxDuration = _maxDurationDouble;
+
+                              return Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Expanded(
+                                      child: Slider(
+                                        value: widget
+                                            ._audioCurrentDuration.inSeconds
+                                            .toDouble(),
+                                        max: _maxDurationDouble,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            widget._audioCurrentDuration =
+                                                Duration(
+                                                    seconds: value.toInt());
+                                            widget._audioPlayer.seek(
+                                                widget._audioCurrentDuration);
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ]);
+                            } else {
+                              return Text("err");
+                            }
+                        }
+                      });
+                }
+              }),
+              // 2
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  SizedBox(
-                      width: 45,
-                      child: Text(getDuration(widget._audioCurrentDuration))),
-                  Expanded(
-                    child: Slider(
-                      value: widget._audioCurrentDuration.inSeconds.toDouble(),
-                      max: widget._audioMaxDuration,
-                      onChanged: (value) {
-                        setState(() {
-                          widget._audioCurrentDuration =
-                              Duration(seconds: value.toInt());
-                          widget._audioPlayer
-                              .seek(widget._audioCurrentDuration);
+                  // start pos
+                  Container(
+                    margin: EdgeInsets.fromLTRB(20.0, 0.0, 0.0, 0.0),
+                    width: 60,
+                    child: widget._audioPlayer.builderIsPlaying(
+                        builder: (context, isPlaying) {
+                      if (isPlaying) {
+                        return widget._audioPlayer.builderCurrentPosition(
+                            builder: (context, position) {
+                          return Text(getDuration(position));
                         });
+                      } else {
+                        return Text(getDuration(widget._audioCurrentDuration));
+                      }
+                    }),
+                  ),
+                  // button things
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.skip_previous_rounded),
+                          FloatingActionButton(onPressed: () {
+                            setState(() {
+                              widget._audioPlayer.isPlaying.value
+                                  ? widget._audioPlayer.pause()
+                                  : widget._audioPlayer.play();
+                              widget._audioMaxDuration = widget._audioPlayer
+                                  .current.value!.audio.duration.inSeconds
+                                  .toDouble();
+                            });
+                          }, child: widget._audioPlayer.builderIsPlaying(
+                              builder: (context, isPlaying) {
+                            if (isPlaying) {
+                              return Icon(Icons.pause_rounded);
+                            } else {
+                              return Icon(Icons.play_arrow_rounded);
+                            }
+                          })),
+                          Icon(Icons.skip_next_rounded),
+                        ],
+                      ),
+                    ],
+                  ),
+                  // end pos
+                  Container(
+                    margin: EdgeInsets.fromLTRB(0.0, 0.0, 20.0, 0.0),
+                    child: StreamBuilder(
+                      stream: widget._audioPlayer.current,
+                      builder: (builder, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(getDuration(
+                              (snapshot.data as Playing).audio.duration));
+                        } else {
+                          return Text("none");
+                        }
                       },
                     ),
                   ),
-                  Text(getDuration(
-                      Duration(seconds: widget._audioMaxDuration.toInt()))),
                 ],
-              );
-            });
-            // kalo engga pake streambuilder, ngecek audionya udh load -> widget
-          } else {
-            return StreamBuilder(
-                stream: widget._audioPlayer.current,
-                builder: (context, snapshot) {
-                  switch (snapshot.connectionState) {
-                    case ConnectionState.waiting:
-                      return Text("Loading...");
-                    default:
-                      if (snapshot.hasData) {
-                        var _maxDurationDouble = (snapshot.data as Playing)
-                            .audio
-                            .duration
-                            .inSeconds
-                            .toDouble();
-                        var _maxDuration =
-                            (snapshot.data as Playing).audio.duration;
-
-                        return Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              SizedBox(
-                                  width: 45,
-                                  child: Text(getDuration(
-                                      widget._audioCurrentDuration))),
-                              Expanded(
-                                child: Slider(
-                                  value: widget._audioCurrentDuration.inSeconds
-                                      .toDouble(),
-                                  max: _maxDurationDouble,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      widget._audioCurrentDuration =
-                                          Duration(seconds: value.toInt());
-                                      widget._audioPlayer
-                                          .seek(widget._audioCurrentDuration);
-                                    });
-                                  },
-                                ),
-                              ),
-                              Text(getDuration(_maxDuration)),
-                              IconButton(
-                                  splashRadius: 15,
-                                  onPressed: () => {},
-                                  icon: Icon(Icons.settings_rounded))
-                            ]);
-                      } else {
-                        return Text("err");
-                      }
-                  }
-                });
-          }
-        }),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
