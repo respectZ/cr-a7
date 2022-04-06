@@ -75,25 +75,29 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.skip_previous_rounded),
-            ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    widget._audioPlayer.isPlaying.value
-                        ? widget._audioPlayer.pause()
-                        : widget._audioPlayer.play();
-                    widget._audioMaxDuration = widget
-                        ._audioPlayer.current.value!.audio.duration.inSeconds
-                        .toDouble();
-                  });
-                },
-                child: Icon(widget._audioPlayer.isPlaying.value
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded)),
+            ElevatedButton(onPressed: () {
+              setState(() {
+                widget._audioPlayer.isPlaying.value
+                    ? widget._audioPlayer.pause()
+                    : widget._audioPlayer.play();
+                widget._audioMaxDuration = widget
+                    ._audioPlayer.current.value!.audio.duration.inSeconds
+                    .toDouble();
+              });
+            }, child: widget._audioPlayer.builderIsPlaying(
+                builder: (context, isPlaying) {
+              if (isPlaying) {
+                return Icon(Icons.pause_rounded);
+              } else {
+                return Icon(Icons.play_arrow_rounded);
+              }
+            })),
             Icon(Icons.skip_next_rounded),
           ],
         ),
         // Timer & Slider
         widget._audioPlayer.builderIsPlaying(builder: (context, isPlaying) {
+          // kalo is playing pake streambuilder current pos
           if (isPlaying) {
             return widget._audioPlayer.builderCurrentPosition(
                 builder: (context, position) {
@@ -101,7 +105,9 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
               return Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(getDuration(widget._audioCurrentDuration)),
+                  SizedBox(
+                      width: 45,
+                      child: Text(getDuration(widget._audioCurrentDuration))),
                   Expanded(
                     child: Slider(
                       value: widget._audioCurrentDuration.inSeconds.toDouble(),
@@ -121,6 +127,7 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
                 ],
               );
             });
+            // kalo engga pake streambuilder, ngecek audionya udh load -> widget
           } else {
             return StreamBuilder(
                 stream: widget._audioPlayer.current,
@@ -139,9 +146,12 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
                             (snapshot.data as Playing).audio.duration;
 
                         return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Text(getDuration(widget._audioCurrentDuration)),
+                              SizedBox(
+                                  width: 45,
+                                  child: Text(getDuration(
+                                      widget._audioCurrentDuration))),
                               Expanded(
                                 child: Slider(
                                   value: widget._audioCurrentDuration.inSeconds
@@ -158,6 +168,10 @@ class _AudioPlayerState extends State<AudioPlayerPage> {
                                 ),
                               ),
                               Text(getDuration(_maxDuration)),
+                              IconButton(
+                                  splashRadius: 15,
+                                  onPressed: () => {},
+                                  icon: Icon(Icons.settings_rounded))
                             ]);
                       } else {
                         return Text("err");
